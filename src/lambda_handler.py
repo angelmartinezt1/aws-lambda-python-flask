@@ -1,4 +1,12 @@
-from app import app
-from mangum import Mangum
+import sys
+import os
 
-handler = Mangum(app)  # Adaptador para API Gateway en AWS Lambda
+# Agregar el directorio actual al path para evitar problemas de importación
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+import awsgi
+from app import app
+
+
+def handler(event, context):
+    return awsgi.response(app, event, context)

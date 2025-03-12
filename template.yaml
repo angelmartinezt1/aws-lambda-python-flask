@@ -5,22 +5,29 @@ Globals:
   Function:
     Timeout: 10
     MemorySize: 512
-    Runtime: python3.9
+    Runtime: python3.13
 
 Resources:
   FlaskFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: flask-api-function
-      Handler: lambda_handler.handler
+      Handler: src.lambda_handler.handler
       CodeUri: .
       Policies:
         - AWSLambdaBasicExecutionRole
       Environment:
         Variables:
           FLASK_ENV: "production"
+      
       Events:
-        Api:
+        ApiRoot:
+          Type: Api
+          Properties:
+            RestApiId: !Ref FlaskApiGateway
+            Path: /
+            Method: ANY
+        ApiProxy:
           Type: Api
           Properties:
             RestApiId: !Ref FlaskApiGateway
@@ -39,6 +46,16 @@ Resources:
         schemes:
           - "https"
         paths:
+          /:
+            x-amazon-apigateway-any-method:
+              produces:
+                - "application/json"
+              responses: {}
+              x-amazon-apigateway-integration:
+                uri: 
+                  Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${FlaskFunction.Arn}/invocations"
+                httpMethod: "POST"
+                type: "aws_proxy"
           /{proxy+}:
             x-amazon-apigateway-any-method:
               produces:
