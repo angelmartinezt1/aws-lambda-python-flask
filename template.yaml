@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 512
+    Runtime: python3.9
+
+Resources:
+  FlaskFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: flask-api-function
+      Handler: lambda_handler.handler
+      CodeUri: .
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Environment:
+        Variables:
+          FLASK_ENV: "production"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref FlaskApiGateway
+            Path: /{proxy+}
+            Method: ANY
+
+  FlaskApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: flask-api
+      StageName: dev
+      DefinitionBody:
+        swagger: "2.0"
+        info:
+          title: "Flask API"
+        schemes:
+          - "https"
+        paths:
+          /{proxy+}:
+            x-amazon-apigateway-any-method:
+              produces:
+                - "application/json"
+              responses: {}
+              x-amazon-apigateway-integration:
+                uri: 
+                  Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${FlaskFunction.Arn}/invocations"
+                httpMethod: "POST"
+                type: "aws_proxy"
+
+Outputs:
+  ApiGatewayUrl:
+    Description: "URL de la API Gateway"
+    Value: !Sub "https://${FlaskApiGateway}.execute-api.${AWS::Region}.amazonaws.com/dev/"
